@@ -5,6 +5,9 @@ FROM python:3.8
 ENV APP_HOME /app
 ENV PYTHONUNBUFFERED 1
 
+ENV HUGGINGFACE_TOKEN="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"
+ENV HUGGINGFACE_REPO="IsHanGarg/neurips-model"
+
 # Create and set the working directory
 WORKDIR $APP_HOME
 
