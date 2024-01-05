@@ -4,19 +4,17 @@ from transformers import (
     TrainingArguments
 )
 from trl import RewardTrainer
-import os
 from datasets import load_dataset
 
 data_name = "Anthropic/hh-rlhf"
 training_data = load_dataset(data_name, split="train")
-os.environ['TRANSFORMERS_CACHE'] = '../../../scratch/tushar_s.iitr/models'
 
 gpt_tokenizer = AutoTokenizer.from_pretrained("tiiuae/falcon-rw-1b")
 gpt_model = AutoModelForSequenceClassification.from_pretrained("tiiuae/falcon-rw-1b")
 gpt_tokenizer.pad_token = gpt_tokenizer.eos_token
 gpt_tokenizer.padding_side = "right"
 train_params = TrainingArguments(
-    output_dir="../../../scratch/tushar_s.iitr/models/enhanced_model",
+    output_dir="reward_model",
     num_train_epochs=1,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=1,

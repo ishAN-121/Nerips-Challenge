@@ -1,42 +1,30 @@
-import os
 import torch
-from datasets import load_from_disk,load_dataset
+from datasets import load_dataset
 from transformers import (
     LlamaForCausalLM,
     LlamaTokenizer,
     BitsAndBytesConfig,
-    HfArgumentParser,
     TrainingArguments,
-    pipeline,
-    logging,
 )
-from peft import LoraConfig, PeftModel
-from trl import SFTTrainer,RewardTrainer,PPOConfig,PPOTrainer
+from peft import LoraConfig
+from trl import SFTTrainer
+from dotenv import dotenv_values
 
-os.environ['TRANSFORMERS_CACHE'] = '../../../scratch/tushar_s.iitr/models'
-
+env_vars = dotenv_values('.env')
 dataset = load_dataset("piqa", split="train")
-
-# Model and tokenizer names
-base_model_name = "../../../scratch/tushar_s.iitr/models/model"
-base_tokenizer_name = "../../../scratch/tushar_s.iitr/models/tokenizer"
-refined_model = "../../../scratch/tushar_s.iitr/models/new_model_1"
-
-# Tokenizer
-llama_tokenizer = LlamaTokenizer.from_pretrained(base_tokenizer_name, trust_remote_code=True)
+llama_tokenizer = LlamaTokenizer.from_pretrained("openlm-research/open_llama_3b_v2", trust_remote_code=True)
 llama_tokenizer.pad_token = llama_tokenizer.eos_token
-llama_tokenizer.padding_side = "right"  # Fix for fp16
+llama_tokenizer.padding_side = "right" 
 
-#Quantization Config
+
 quant_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
     bnb_4bit_compute_dtype=torch.float16,
     bnb_4bit_use_double_quant=False
 )
-# Model
 base_model = LlamaForCausalLM.from_pretrained(
-    base_model_name,
+    "openlm-research/open_llama_3b_v2",
     quantization_config=quant_config,
     device_map={"": 0}
 )
@@ -44,7 +32,6 @@ base_model.config.use_cache = False
 base_model.config.pretraining_tp = 1
 print("base model done")
 
-# LoRA Config
 peft_parameters = LoraConfig(
     lora_alpha=32,
     lora_dropout=0.1,
@@ -52,9 +39,8 @@ peft_parameters = LoraConfig(
     bias="none",
     task_type="CAUSAL_LM"
 )
-# Training Params
 train_params = TrainingArguments(
-    output_dir="../../../scratch/tushar_s.iitr/models/enhanced_model",
+    output_dir=env_vars.get("Output_Dir"),
     num_train_epochs=1,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=1,
@@ -72,7 +58,6 @@ train_params = TrainingArguments(
     lr_scheduler_type="constant"
 )
 
-# Trainer
 fine_tuning = SFTTrainer(
     model=base_model,
     train_dataset=dataset,
@@ -83,16 +68,15 @@ fine_tuning = SFTTrainer(
     max_seq_length = 512
 )
 
-# Training
+
 fine_tuning.train()
 
-# Save Model
-fine_tuning.model.save_pretrained(refined_model)
+fine_tuning.model.save_pretrained(env_vars.get("Refined_Model"))
 base_model = LlamaForCausalLM.from_pretrained(
-    refined_model,
+    env_vars.get("Refined_Model"),
     device_map={"": 0}
 )
-base_model.push_to_hub("neurips-model")
+base_model.push_to_hub(env_vars.get("Refined_Model_Name"))
 
 
 

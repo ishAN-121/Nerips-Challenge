@@ -1,14 +1,11 @@
 from fastapi import FastAPI
-import torch  # Import your LLM model's library
+import uvicorn
+import torch  
 from typing import Optional
 from transformers import (
     LlamaForCausalLM,
     LlamaTokenizer,
-    BitsAndBytesConfig,
-    HfArgumentParser,
-    TrainingArguments,
-    pipeline,
-    logging
+    BitsAndBytesConfig
 )
 quant_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -27,10 +24,8 @@ llama_tokenizer.padding_side = "right"
 
 app = FastAPI()
 
-@app.get("/generate/")
+@app.post("/generate/")
 async def generate_text(prompt: str, max_length: Optional[int] = 100):
-    # Process the 'prompt' and generate text using your LLM
-    # Replace this with code to use your LLM model
     input_ids = llama_tokenizer(prompt, return_tensors="pt").input_ids
     input_ids = input_ids.to("cuda:0")
     generation_output = model.generate(
@@ -39,5 +34,4 @@ async def generate_text(prompt: str, max_length: Optional[int] = 100):
     return {"generated_text": generation_output[0]}
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
